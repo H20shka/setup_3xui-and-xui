@@ -42,9 +42,28 @@ git clone https://github.com/vaxilu/x-ui.git || error_exit "Не удалось 
 echo "Шаг 4: Переход в директорию x-ui..."
 cd x-ui || error_exit "Директория x-ui не найдена"
 
-# Шаг 5: Запуск x-ui в фоне
-echo "Шаг 5: Запуск x-ui в фоне..."
-docker-compose up -d || error_exit "Не удалось запустить x-ui"
+# Шаг 5: Проверка конфигурации Docker
+echo "Шаг 5: Проверка конфигурации Docker..."
+if [ -f "docker-compose.yml" ] || [ -f "docker-compose.yaml" ] || [ -f "compose.yml" ] || [ -f "compose.yaml" ]; then
+    echo "Найден файл docker-compose, запускаем..."
+    docker-compose up -d || error_exit "Не удалось запустить x-ui через docker-compose"
+else
+    echo "Файл docker-compose.yml не найден. Проверяем наличие install.sh..."
+    if [ -f "install.sh" ]; then
+        echo "Найден install.sh, запускаем установку..."
+        bash install.sh || error_exit "Не удалось выполнить install.sh"
+    else
+        echo "⚠️  Docker Compose файл не найден. Попытка ручного запуска Docker..."
+        # Ручной запуск x-ui через Docker
+        docker run -d \
+          --name x-ui \
+          -p 54321:54321 \
+          -v $(pwd)/db/:/etc/x-ui/ \
+          -v $(pwd)/cert/:/root/cert/ \
+          --restart=unless-stopped \
+          vaxilu/x-ui:latest || error_exit "Не удалось запустить x-ui через Docker"
+    fi
+fi
 
 # Шаг 6: Получение порта из логов Docker
 echo "Шаг 6: Получение порта панели из логов Docker..."
